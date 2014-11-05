@@ -128,6 +128,7 @@ import org.apache.hadoop.hive.ql.udf.UDFYear;
 import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFAverage;
 import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFCount;
 import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFSum;
+import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFOrdinaryLeastSquares;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFAverage;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBridge;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFCollectSet;
@@ -414,6 +415,7 @@ public final class FunctionRegistry {
     registerGenericUDAF("approx_avg", new ApproxUDAFAverage());
     registerGenericUDAF("approx_count", new ApproxUDAFCount());
     registerGenericUDAF("approx_sum", new ApproxUDAFSum());
+    registerGenericUDAF("approx_ols", new ApproxUDAFOrdinaryLeastSquares());
 
 
     registerGenericUDAF("std", new GenericUDAFStd());
