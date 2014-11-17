@@ -18,6 +18,7 @@
 package org.apache.hadoop.hive.ql.udf.approx;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.la4j.LinearAlgebra;
 import org.la4j.matrix.Matrix;
@@ -25,10 +26,13 @@ import org.la4j.matrix.dense.Basic2DMatrix;
 import org.la4j.vector.Vector;
 import org.la4j.vector.dense.BasicVector;
 import org.la4j.inversion.MatrixInverter;
+import org.la4j.linear.LeastSquaresSolver;
+import org.la4j.decomposition.MatrixDecompositor;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -120,7 +124,7 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
     private Object[] partialResult;
 
     // For FINAL and COMPLETE
-    Text result;
+    private ArrayList<Double> result;
 
     @Override
     public ObjectInspector init(Mode m, ObjectInspector[] parameters) throws HiveException {
@@ -176,8 +180,9 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
             foi);
 
       } else {
-        result = new Text();
-        return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+        result = new ArrayList(); 
+        return ObjectInspectorFactory.getStandardListObjectInspector(
+                    PrimitiveObjectInspectorFactory.writableDoubleObjectInspector);
       }
 
     }
@@ -329,12 +334,35 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
         return null;
       }
       
-      MatrixInverter inverter = myagg.A.withInverter(LinearAlgebra.GAUSS_JORDAN);
-      Matrix Ainv = inverter.inverse(LinearAlgebra.DENSE_FACTORY);
-
-      LOG.info("Count: " + myagg.count);
-
       StringBuilder sb = new StringBuilder();
+
+      LeastSquaresSolver solver = new LeastSquaresSolver(myagg.A);
+      Vector sparse_solved = solver.solve(myagg.b);
+      BasicVector solved = (BasicVector) sparse_solved.copy(LinearAlgebra.BASIC1D_FACTORY);
+      double bhat[] = solved.toArray();
+      // Convert the array list to the DoubleWritable type
+      ArrayList<DoubleWritable> result = new ArrayList<DoubleWritable>();
+      for (double d : bhat)
+        result.add(new DoubleWritable(d)); 
+      
+  
+      // We'll decompose into QR to check for rank. We require non-perfect 
+      // multicollinearity for proper linear least sqaures approximation, aka
+      // the columns must not be linearly dependent in any way, aka we require 
+      // matrix A to be full rank
+      MatrixDecompositor decom = myagg.A.withDecompositor(LinearAlgebra.RAW_QR);
+      Matrix[] qrr = decom.decompose();
+      Matrix r = qrr[1];
+      // If any row is zero we're rank deficient.
+      for (int i = 0; i < r.rows(); i++) {
+        if (r.get(i, i) == 0.0) {
+          throw new UDFArgumentTypeException(0, "The columns you have selected are linearly dependent or close to it. Please use uncorrelated variables for regression");
+        } else if (r.get(i,i) <= 0.001) {
+          sb.append("Warning: Selected columns are nearly colinear, result may be inaccurate\n");
+        }
+      }
+    
+
       sb.append("Count: ");
       sb.append(myagg.count);
       sb.append("\nA: ");
@@ -342,9 +370,8 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
       sb.append("b: ");
       sb.append(myagg.b.toString());
       sb.append("\nCoeffs: ");
-      sb.append(Ainv.multiply(myagg.b));
+      sb.append(solved.toString());
 
-      result.set(sb.toString());
       return result;
 
     }
