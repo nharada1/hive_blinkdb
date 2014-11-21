@@ -38,6 +38,7 @@
                 conf="test->default" transitive="false"/>
     <dependency org="org.antlr" name="antlr" rev="${antlr.version}"
                 transitive="false"/>
+    <dependency org="org.apache.commons" name="commons-math3" rev="3.0"/>
 
     <!-- hadoop specific guava -->
     <dependency org="com.google.guava" name="guava" rev="${guava-hadoop20.version}"
