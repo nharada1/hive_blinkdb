@@ -330,7 +330,7 @@ public class StdErrUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
           }
           
           // Get our value of Y for this row also, which is the last value of vA
-          double this_y = vA[vA.length-1];
+          double this_y = vA[vA.length-1]; 
         
           // Calculate this residual
           double residual = this_y;

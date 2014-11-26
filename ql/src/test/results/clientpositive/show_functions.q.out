@@ -22,6 +22,10 @@ POSTHOOK: type: SHOWFUNCTIONS
 abs
 acos
 and
+approx_avg
+approx_count
+approx_ols
+approx_sum
 array
 array_contains
 ascii
@@ -55,6 +59,7 @@ degrees
 div
 e
 elt
+err_approx_ols
 ewah_bitmap
 ewah_bitmap_and
 ewah_bitmap_empty

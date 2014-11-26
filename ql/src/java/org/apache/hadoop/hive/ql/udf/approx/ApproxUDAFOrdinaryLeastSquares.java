@@ -236,7 +236,6 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
           Matrix this_X = new Basic2DMatrix(clipped_mat);
           Matrix this_XT = this_X.transpose();
           Matrix this_A = this_XT.multiply(this_X);
-          LOG.warn(this_A.toString());
          
           // Generate the b vector
           Vector this_y = new BasicVector(new double[]{ vA[nParams-1] });
@@ -258,6 +257,7 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
           }
 
           myagg.count++;
+          LOG.warn(myagg.count);
         } catch (NumberFormatException e) {
           if (!warned) {
             warned = true;
@@ -322,6 +322,7 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
           myagg.empty = false;
           myagg.count += m;
           myagg.A = myagg.A.add(A);
+          LOG.warn(myagg.A.toString());
           myagg.b = myagg.b.add(b);
         }
       }
