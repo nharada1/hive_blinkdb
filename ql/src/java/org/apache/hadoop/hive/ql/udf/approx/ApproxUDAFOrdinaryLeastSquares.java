@@ -217,8 +217,14 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
     public void iterate(AggregationBuffer agg, Object[] parameters) throws HiveException {
       assert (parameters.length >= 2);
 
-      Object p = parameters[0];
-      if (p != null) {
+      boolean nulls = false;
+      for (int i=0; i<parameters.length; i++) {
+          if (parameters[i] == null) {
+              nulls = true;
+          }
+      }
+      if (!nulls) {
+        Object p = new Object();
         int nParams = parameters.length;
         SumDoubleAgg myagg = (SumDoubleAgg) agg;
         try {
