@@ -130,6 +130,9 @@ import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFCount;
 import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFSum;
 import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFOrdinaryLeastSquares;
 import org.apache.hadoop.hive.ql.udf.approx.StdErrUDAFOrdinaryLeastSquares;
+import org.apache.hadoop.hive.ql.udf.approx.ApproxUDAFOrdinaryLeastSquares;
+import org.apache.hadoop.hive.ql.udf.approx.PrepTestApproxUDAFOrdinaryLeastSquares;
+import org.apache.hadoop.hive.ql.udf.approx.TestApproxUDAFOrdinaryLeastSquares;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFAverage;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBridge;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFCollectSet;
@@ -418,6 +421,9 @@ public final class FunctionRegistry {
     registerGenericUDAF("approx_sum", new ApproxUDAFSum());
     registerGenericUDAF("approx_ols", new ApproxUDAFOrdinaryLeastSquares());
     registerGenericUDAF("err_approx_ols", new StdErrUDAFOrdinaryLeastSquares());
+    registerGenericUDAF("prep_test_approx_ols", new PrepTestApproxUDAFOrdinaryLeastSquares());
+    registerGenericUDAF("test_approx_ols", new TestApproxUDAFOrdinaryLeastSquares());
+
 
 
     registerGenericUDAF("std", new GenericUDAFStd());
