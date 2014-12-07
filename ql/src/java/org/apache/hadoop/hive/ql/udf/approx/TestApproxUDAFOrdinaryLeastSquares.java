@@ -283,8 +283,14 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
     public void iterate(AggregationBuffer agg, Object[] parameters) throws HiveException {
       assert (parameters.length >= 2); 
 
-      Object p = parameters[0];
-      if (p != null) {
+      boolean nulls = false;
+      for (int i=0; i<parameters.length; i++) {
+          if (parameters[i] == null) {
+              nulls = true;
+          }
+      }
+      if (!nulls) {
+        Object p = new Object();
         int nParams = parameters.length;
         SumDoubleAgg myagg = (SumDoubleAgg) agg;
         try {
@@ -303,15 +309,10 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           }
 
           //check that the number of covariates is equal to the dimension of betahat
-          if (myagg.bhat.size() != (vA.length-1)) {
-              
+          if (myagg.betaHat.size() != (vA.length-1)) {
+              throw new HiveException("Coefficient vector must have same size as the number of rows");
           }
-        // if (myagg.bhat )
-        // if(!myagg.histogram.isReady()) {
-        //   int nbins = PrimitiveObjectInspectorUtils.getInt(parameters[1], nbinsOI);
-        //   if(nbins < 2) {
-        //     throw new HiveException(getClass().getSimpleName() + " needs nbins to be at least 2,"
-        //                             + " but you supplied " + nbins + ".");
+  
 
           // Calculate the dot product of betahat and x1,...,xn; this gives pred
           double pred = 0;

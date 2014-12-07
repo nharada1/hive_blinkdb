@@ -81,7 +81,7 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
   // dataset size (in that order) to the end of the query. So when we get it, we get
   // err_approx_ols(X1,X2,...,Xn,Y,SAMPLESIZE,DATASETSIZE). For lack of a better word
   // I'm calling those extra arguments INDUCED_ARGS. They are always at the end.
-  private static final int INDUCED_ARGS = 2;
+  private static final int INDUCED_ARGS = 0;
 
   @Override
   public GenericUDAFEvaluator getEvaluator(TypeInfo[] parameters)
@@ -132,23 +132,17 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
     // For PARTIAL1 and COMPLETE
     private ArrayList<PrimitiveObjectInspector> inputOI;
     private StandardListObjectInspector bhatOI;
-    private PrimitiveObjectInspector totalRowsOI;
-    private PrimitiveObjectInspector sampleRowsOI;
 
     // For PARTIAL2 and FINAL
     private StructObjectInspector soi;
     private StructField countField;
     private StructField residualField;
     private StructField AField;
-    private StructField totalRowsField;
-    private StructField sampleRowsField;
     private StructField betaHatField;
 
     private LongObjectInspector countFieldOI;
     private DoubleObjectInspector residualFieldOI;
     private BinaryObjectInspector AFieldOI;
-    private LongObjectInspector totalRowsFieldOI;
-    private LongObjectInspector sampleRowsFieldOI;
     private BinaryObjectInspector betaHatFieldOI;
 
     // For PARTIAL1 and PARTIAL2
@@ -163,11 +157,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
     public ObjectInspector init(Mode m, ObjectInspector[] parameters) throws HiveException {
       assert (parameters.length >= 2+INDUCED_ARGS);
       super.init(m, parameters);
-      
-      if (parameters.length >= 2+INDUCED_ARGS) {
-        totalRowsOI = (PrimitiveObjectInspector) parameters[parameters.length-1];
-        sampleRowsOI = (PrimitiveObjectInspector) parameters[parameters.length-2];
-      }
 
       // init input
       if (mode == Mode.PARTIAL1 || mode == Mode.COMPLETE) {
@@ -184,8 +173,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         countField = soi.getStructFieldRef("count");
         residualField = soi.getStructFieldRef("residual");
         AField = soi.getStructFieldRef("A");
-        totalRowsField = soi.getStructFieldRef("totalRows");
-        sampleRowsField = soi.getStructFieldRef("sampleRows");
         betaHatField = soi.getStructFieldRef("betaHat");
 
         countFieldOI = (LongObjectInspector) countField
@@ -193,10 +180,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         residualFieldOI = (DoubleObjectInspector) residualField
             .getFieldObjectInspector();
         AFieldOI = (BinaryObjectInspector) AField
-            .getFieldObjectInspector();
-        totalRowsFieldOI = (LongObjectInspector) totalRowsField
-            .getFieldObjectInspector();
-        sampleRowsFieldOI = (LongObjectInspector) sampleRowsField
             .getFieldObjectInspector();
         betaHatFieldOI = (BinaryObjectInspector) betaHatField 
             .getFieldObjectInspector();
@@ -213,8 +196,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         foi.add(PrimitiveObjectInspectorFactory.writableLongObjectInspector);
         foi.add(PrimitiveObjectInspectorFactory.writableDoubleObjectInspector);
         foi.add(PrimitiveObjectInspectorFactory.writableBinaryObjectInspector);
-        foi.add(PrimitiveObjectInspectorFactory.writableLongObjectInspector);
-        foi.add(PrimitiveObjectInspectorFactory.writableLongObjectInspector);
         foi.add(PrimitiveObjectInspectorFactory.writableBinaryObjectInspector);
 
         ArrayList<String> fname = new ArrayList<String>();
@@ -222,18 +203,14 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         fname.add("count");
         fname.add("residual");
         fname.add("A");
-        fname.add("totalRows");
-        fname.add("sampleRows");
         fname.add("betaHat");
 
-        partialResult = new Object[7];
+        partialResult = new Object[5];
         partialResult[0] = new BooleanWritable();
         partialResult[1] = new LongWritable(0);
         partialResult[2] = new DoubleWritable(0.0);
         partialResult[3] = new BytesWritable();
-        partialResult[4] = new LongWritable(0);
-        partialResult[5] = new LongWritable(0);
-        partialResult[6] = new BytesWritable(); 
+        partialResult[4] = new BytesWritable(); 
 
         return ObjectInspectorFactory.getStandardStructObjectInspector(fname,
             foi);
@@ -254,8 +231,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       long count; // number of elements
       double residual;
       Matrix A;
-      long totalRows;
-      long sampleRows;
       ArrayList<Double> betaHat;
     }
 
@@ -273,8 +248,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       myagg.count = 0;
       myagg.A = null;
       myagg.residual = 0.0;
-      myagg.totalRows = 0;
-      myagg.sampleRows = 0;
       myagg.betaHat = new ArrayList<Double>(); 
     }
 
@@ -285,10 +258,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       assert (parameters.length >= 2+INDUCED_ARGS);
 
       if (parameters.length >= 2+INDUCED_ARGS) {
-        ((SumDoubleAgg) agg).totalRows = PrimitiveObjectInspectorUtils.getLong(parameters[parameters.length-1],
-            totalRowsOI);
-        ((SumDoubleAgg) agg).sampleRows = PrimitiveObjectInspectorUtils.getLong(parameters[parameters.length-2],
-            sampleRowsOI);
         // Convert the ArrayList to real doubles and not DoubleWritables
         ArrayList betaHatDW = new ArrayList(bhatOI.getList(parameters[0]));
         ArrayList<Double> betaHat = new ArrayList<Double>();
@@ -301,8 +270,14 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         ((SumDoubleAgg) agg).betaHat = betaHat;
       }
 
-      Object p = parameters[0];
-      if (p != null) {
+        boolean nulls = false;
+        for (int i=0; i<parameters.length; i++) {
+          if (parameters[i] == null) {
+            nulls = true;
+          }
+        }
+        if (!nulls) {
+         Object p = new Object();
         int nParams = parameters.length-INDUCED_ARGS;
         SumDoubleAgg myagg = (SumDoubleAgg) agg;
         try {
@@ -342,6 +317,7 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
           double residual = this_y;
           for (int i=0; i<myagg.betaHat.size(); i++) {
             Double bhVal = (Double) myagg.betaHat.get(i);
+            LOG.warn(vA.toString());
             residual -= vA[i]*bhVal;
           }  
     
@@ -375,11 +351,9 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       byte[] serializedA = SerializationUtils.serialize(myagg.A);
       ((BytesWritable) partialResult[3]).set(serializedA, 0, serializedA.length);
 
-      ((LongWritable) partialResult[4]).set(myagg.totalRows);
-      ((LongWritable) partialResult[5]).set(myagg.sampleRows);
       
       byte[] serializedbetaHat = SerializationUtils.serialize(myagg.betaHat);
-      ((BytesWritable) partialResult[6]).set(serializedbetaHat, 0, serializedbetaHat.length);
+      ((BytesWritable) partialResult[4]).set(serializedbetaHat, 0, serializedbetaHat.length);
       return partialResult;
     }
 
@@ -394,8 +368,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         Object partialCount = soi.getStructFieldData(partial, countField);
         Object partialResidual = soi.getStructFieldData(partial, residualField);
         Object partialA = soi.getStructFieldData(partial, AField);
-        Object partialTotalRows = soi.getStructFieldData(partial, totalRowsField);
-        Object partialSampleRows = soi.getStructFieldData(partial, sampleRowsField);
         Object partialBetaHat = soi.getStructFieldData(partial, betaHatField);
 
         long n = myagg.count;
@@ -409,8 +381,6 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
         byte[] des_betaHat = betaHatFieldOI.getPrimitiveJavaObject(partialBetaHat).getData();
         myagg.betaHat = (ArrayList) SerializationUtils.deserialize(des_betaHat); 
 
-        myagg.totalRows = totalRowsFieldOI.get(partialTotalRows);
-        myagg.sampleRows = sampleRowsFieldOI.get(partialSampleRows);
         if (n == 0) {
           // Just copy the information since there is nothing so far
           myagg.count = m; 
@@ -450,7 +420,7 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       double norm_factor = 1/degrees_of_freedom;
 
       double s_hat = myagg.residual * norm_factor;
-      Matrix scaled_Ainv = Ainv.multiply(1/myagg.sampleRows);
+      Matrix scaled_Ainv = Ainv.multiply(1/myagg.count);
       //resize scaled_Ainv into vector
       Matrix flat_Ainv = scaled_Ainv.resize(1, cols);
       //convert to basic2dmatrix so that we can use toArray method
@@ -473,18 +443,13 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       sb.append(myagg.A.toString());
       sb.append("residual: ");
       sb.append(myagg.residual);
-      sb.append("\nSampleRows: ");
-      sb.append(myagg.sampleRows);
       sb.append("\nNorm Factor: ");
       sb.append(norm_factor);
-      sb.append("\nTotalRows: ");
-      sb.append(myagg.totalRows);
 
 
     //  result.set(sb.toString());
       return result;
 
     }
-
   }
 }
