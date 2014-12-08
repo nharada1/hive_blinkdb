@@ -35,6 +35,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.math3.distribution.TDistribution;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -69,7 +70,7 @@ import org.apache.hadoop.util.StringUtils;
 @Description(name = "test_approx_ols", 
           value = "_FUNC_(x) - Predicts values of a column based on a set of regression inputs",
           extended = "Example:\n"
-          + "SELECT approx_ols_test(beta array, A^(-1) array, s^2 scalar, x0 (key column), x1,x2,x3) FROM test;\n"
+          + "SELECT test_approx_ols(beta array, A^(-1) array, s^2 scalar, x0 (key column), x1,x2,x3) FROM test;\n"
           + "beta is a column of size 3 of regression estimates computed from approx_ols_test."
           + "A^(-1) is an array of size 3^2 given by prep_test_approx_ols"
           + "s^2 is an estimate of s^2 given by prep_test_approx_ols"
@@ -87,10 +88,10 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
       throws SemanticException {
     if (parameters.length < 5) { //is this the right number of coefficients?
       throw new UDFArgumentTypeException(parameters.length - 1,
-          "Expected at least two arguments but got " + parameters.length);
+          "Expected at least five arguments but got " + parameters.length);
     }
 
-    for (int i=0; i<parameters.length; i++) {
+    for (int i=3; i<parameters.length; i++) { //ask nate if it makes sense to start at 4. Need to skip over first few args
       if (parameters[i].getCategory() != ObjectInspector.Category.PRIMITIVE) {
         throw new UDFArgumentTypeException(0,
             "Only primitive type arguments are accepted but "
@@ -151,7 +152,8 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
     private Object[] partialResult;
 
     // For FINAL and COMPLETE
-    private HashMap<Double, Double> result; //should this be upper case double, i.e., Double
+    // private HashMap<Double, Double> result; //should this be upper case double, i.e., Double
+    Text result;
 
     @Override
     public ObjectInspector init(Mode m, ObjectInspector[] parameters) throws HiveException {
@@ -182,13 +184,13 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
             .getFieldObjectInspector();
         predFieldOI = (BinaryObjectInspector) predField
             .getFieldObjectInspector();
-        ciFieldOI = (BinaryObjectInspector) predField
+        ciFieldOI = (BinaryObjectInspector) ciField
             .getFieldObjectInspector();
         betaHatFieldOI = (BinaryObjectInspector) betaHatField 
             .getFieldObjectInspector();
-        AinvFieldOI = (BinaryObjectInspector) betaHatField 
+        AinvFieldOI = (BinaryObjectInspector) AinvField 
             .getFieldObjectInspector();
-        sFieldOI = (DoubleObjectInspector) countField
+        sFieldOI = (DoubleObjectInspector) sField
             .getFieldObjectInspector();
       }
 
@@ -227,7 +229,7 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
         fname.add("Ainv");
         fname.add("s");
 
-        partialResult = new Object[4];
+        partialResult = new Object[7];
         partialResult[0] = new BooleanWritable();
         partialResult[1] = new LongWritable(0);
         partialResult[2] = new BytesWritable();
@@ -241,7 +243,9 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
 
       } else {
         //suffices to return string outcome like in Nate's function
+        result = new Text();
         return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+
 
       }
 
@@ -281,7 +285,36 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
 
     @Override
     public void iterate(AggregationBuffer agg, Object[] parameters) throws HiveException {
-      assert (parameters.length >= 2); 
+      assert (parameters.length >= 5); 
+
+      if (parameters.length >= 5) {
+          // Convert the ArrayList for betaHat to real doubles and not DoubleWritables
+          ArrayList betaHatDW = new ArrayList(bhatOI.getList(parameters[0]));
+          ArrayList<Double> betaHat = new ArrayList<Double>();
+          for (int i=0; i<betaHatDW.size(); i++) {
+            Object bvDW = betaHatDW.get(i);
+            PrimitiveObjectInspector thisOI = (PrimitiveObjectInspector) bhatOI.getListElementObjectInspector();
+            double bVald = PrimitiveObjectInspectorUtils.getDouble(bvDW, thisOI);
+            betaHat.add(bVald);
+          } 
+          ((SumDoubleAgg) agg).betaHat = betaHat;
+
+          // Convert the ArrayList for Ainv to real doubles and not DoubleWritables
+          ArrayList AinvDW = new ArrayList(AinvOI.getList(parameters[1]));
+          ArrayList<Double> Ainv = new ArrayList<Double>();
+          for (int i=0; i<AinvDW.size();i++) {
+            Object avDW = AinvDW.get(i);
+            PrimitiveObjectInspector thisOI = (PrimitiveObjectInspector) AinvOI.getListElementObjectInspector();
+            double AinvVald = PrimitiveObjectInspectorUtils.getDouble(avDW, thisOI);
+            Ainv.add(AinvVald);
+          }
+          ((SumDoubleAgg) agg).Ainv = Ainv;
+
+          // //Obtain Shat Nate: please add code to include Shat here.
+          // Double sDW = new sOI.get(parameters[2]);
+          // Double s = 0.0;
+          // Object 
+      }
 
       boolean nulls = false;
       for (int i=0; i<parameters.length; i++) {
@@ -301,7 +334,7 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           // Note that we have to offset our indicies because vA and thisOI are missing
           // the first bHat parameter value
 
-          double[] vA = new double[nParams];
+          double[] vA = new double[nParams-3];
           for (int i=3; i<nParams; i++) {
             p = parameters[i];
             PrimitiveObjectInspector thisOI = inputOI.get(i-3); //did I mess this up?
@@ -309,9 +342,9 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           }
 
           //check that the number of covariates is equal to the dimension of betahat
-          if (myagg.betaHat.size() != (vA.length-1)) {
-              throw new HiveException("Coefficient vector must have same size as the number of rows");
-          }
+          // if (myagg.betaHat.size() != (vA.length-1)) {
+          //     throw new HiveException("Coefficient vector has size " + myagg.betaHat.size() + "but should have size" + vA.length);
+          // }
   
 
           // Calculate the dot product of betahat and x1,...,xn; this gives pred
@@ -331,24 +364,28 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
 
           //put A^-1 in matrix form
           int m = myagg.Ainv.size();
+          // LOG.warn(m);
           double[][] clipped_mat = new double[1][m]; 
           for (int i=0; i<m; i++) {
             clipped_mat[0][i] = myagg.Ainv.get(i); //I don't get this error??
           }
           Matrix this_Ainv = new Basic2DMatrix(clipped_mat);
           int n = (int) Math.sqrt(m);
+          // LOG.warn(n);
           Matrix res_Ainv = (Basic2DMatrix) this_Ainv.resize(n, n);
 
           //make vector of [x1,x2,...,xn]
           int k = vA.length;
-          double[][] for_X = new double[1][k];
+          // LOG.warn(k);
+          double[][] for_X = new double[k-1][1];
           for (int i=1; i<k; i++) {
-            for_X[0][i] = vA[i]; //I don't get this error??
+            for_X[i-1][0] = vA[i]; //I don't get this error??
           }
           Matrix this_X = new Basic2DMatrix(for_X);
           Matrix this_XT = this_X.transpose();
           Matrix cipart = this_XT.multiply(res_Ainv);
           Matrix ci_mat = cipart.multiply(this_X);
+          LOG.warn(ci_mat);
           Double ci = (Double) ci_mat.get(0,0);
 
           //insert ci into myagg
@@ -356,7 +393,7 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
 
           //increase the count
           myagg.count++;
-          LOG.warn(myagg.count);
+          // LOG.warn(myagg.count);
         } catch (NumberFormatException e) {
           if (!warned) {
             warned = true;
@@ -455,12 +492,22 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
       StringBuilder sb = new StringBuilder();
 
       // Convert the array list to the DoubleWritable type
-      HashMap<Double, Double> result= myagg.pred;
+      // HashMap<Double, Double> result= myagg.pred;
+
+      // confidence interval
+      // rows, cols, and normalization
+      long rows = myagg.count;
+      int n = myagg.Ainv.size();
+      int cols = (int) Math.sqrt(n);
+      double degrees_of_freedom = (double)(rows-cols);
+      // THIS NEEDS TO BE STUDENT T FOR LOW DEGREES OF FREEDOM
+      TDistribution distr = new TDistribution(degrees_of_freedom);
+      double qN = distr.inverseCumulativeProbability(0.995); //Two sided 99%
 
       sb.append("Count: ");
       sb.append(myagg.count);
-      sb.append("\nPredictions: "); //you may not want to see all the predictions; not sure what to do about that. ASK NATE WHAT HE THINKS.
-      sb.append(result.toString());
+      // sb.append("\nPredictions: "); //you may not want to see all the predictions; not sure what to do about that. ASK NATE WHAT HE THINKS.
+      // sb.append(myagg.pred.toString());
 
       //output the predictions with the confidence intervals
       sb.append("\n\nError Bounds:\n\n");
@@ -469,9 +516,12 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
         Double value = entry.getValue();
         sb.append(key);
         sb.append(" +/- ");
-        sb.append(myagg.ci.get(key)*myagg.s);
+        LOG.warn(myagg.s);
+        sb.append(qN*Math.sqrt(myagg.ci.get(key)*myagg.s));
         sb.append("\n");
       }
+      sb.append("\n\nwith 99% Confidence");
+      result.set(sb.toString());
       return result;
 
     }

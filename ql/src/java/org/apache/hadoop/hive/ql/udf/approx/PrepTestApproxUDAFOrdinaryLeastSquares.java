@@ -148,9 +148,9 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
     // For PARTIAL1 and PARTIAL2
     private Object[] partialResult;
 
-
     // For FINAL and COMPLETE
-    private ArrayList<Object> result; //it will contain a matrix A^(-1) and scalar shat, so make it contain object
+    // private ArrayList<Object> result; //it will contain a matrix A^(-1) and scalar shat, so make it contain object
+    Text result;
 
 
     @Override
@@ -217,9 +217,13 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
 
       } else {
 
-        result = new ArrayList(); 
-        return ObjectInspectorFactory.getStandardListObjectInspector(
-                    PrimitiveObjectInspectorFactory.writableDoubleObjectInspector); //Not sure what kind of writableobjectinspector to use here
+        result = new Text();
+        return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+
+        // result = new ArrayList<ObjectWritable>();
+        // return PrimitiveObjectInspectorFactory.WritableByteObjectInspector;
+        // return ObjectInspectorFactory.getStandardListObjectInspector(
+        //             PrimitiveObjectInspectorFactory.writableDoubleObjectInspector); //Not sure what kind of writableobjectinspector to use here
 
       }
 
@@ -408,7 +412,7 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       StringBuilder sb = new StringBuilder();
 
       //create object that will be returned
-      ArrayList<ObjectWritable> result = new ArrayList<ObjectWritable>();
+      // ArrayList<ObjectWritable> result = new ArrayList<ObjectWritable>();
 
       // inv(X'X) or inv(A)
       MatrixInverter inverter = myagg.A.withInverter(LinearAlgebra.GAUSS_JORDAN);
@@ -428,26 +432,28 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       //convert to array
       double array_Ainv[] = md_Ainv.toArray();
       // Convert the array list to the DoubleWritable type Q: WHY DID NATE DO THIS?
-      ArrayList<DoubleWritable> result1 = new ArrayList<DoubleWritable>();
-      for (double d : array_Ainv)
-        result1.add(new DoubleWritable(d)); 
+      // ArrayList<DoubleWritable> result1 = new ArrayList<DoubleWritable>();
+      // for (double d : array_Ainv)
+      //   result1.add(new DoubleWritable(d)); 
 
       //Add s_hat and array_Ainv to result
-      result.add(new ObjectWritable(result1));
-      result.add(new ObjectWritable(s_hat));
+      // result.add(new ObjectWritable(result1));
+      // result.add(new ObjectWritable(s_hat));
 
 
       sb.append("Count: ");
       sb.append(myagg.count);
-      sb.append("\nA: ");
-      sb.append(myagg.A.toString());
-      sb.append("residual: ");
+      sb.append("\nA^(-1): ");
+      sb.append(Ainv.toString());
+      // sb.append(Arrays.toString(array_Ainv));
+      sb.append("\nresidual: ");
       sb.append(myagg.residual);
       sb.append("\nNorm Factor: ");
       sb.append(norm_factor);
+      sb.append("\n S_hat: ");
+      sb.append(s_hat);
 
-
-    //  result.set(sb.toString());
+      result.set(sb.toString());
       return result;
 
     }
