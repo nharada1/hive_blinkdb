@@ -20,6 +20,8 @@ package org.apache.hadoop.hive.ql.udf.approx;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 
 import org.la4j.LinearAlgebra;
 import org.la4j.matrix.Matrix;
@@ -423,6 +425,8 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       double degrees_of_freedom = (double)(rows-cols);
       double norm_factor = 1/degrees_of_freedom;
 
+      double array_Ainv[][] = ((Basic2DMatrix) Ainv).toArray();
+
       double s_hat = myagg.residual * norm_factor;
       Matrix scaled_Ainv = Ainv.multiply(1/myagg.count);
       //resize scaled_Ainv into vector
@@ -430,7 +434,7 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
       //convert to basic2dmatrix so that we can use toArray method
       BasicVector md_Ainv = (BasicVector) flat_Ainv.getRow(0);
       //convert to array
-      double array_Ainv[] = md_Ainv.toArray();
+      //double array_Ainv[] = md_Ainv.toArray();
       // Convert the array list to the DoubleWritable type Q: WHY DID NATE DO THIS?
       // ArrayList<DoubleWritable> result1 = new ArrayList<DoubleWritable>();
       // for (double d : array_Ainv)
@@ -443,9 +447,8 @@ public class PrepTestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFR
 
       sb.append("Count: ");
       sb.append(myagg.count);
-      sb.append("\nA^(-1): ");
-      sb.append(Ainv.toString());
-      // sb.append(Arrays.toString(array_Ainv));
+      sb.append("\nA^(-1): \n");
+      sb.append(Arrays.deepToString(array_Ainv));
       sb.append("\nresidual: ");
       sb.append(myagg.residual);
       sb.append("\nNorm Factor: ");

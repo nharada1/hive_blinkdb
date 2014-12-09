@@ -337,7 +337,7 @@ public class ApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
     @Override
     public Object terminate(AggregationBuffer agg) throws HiveException {
       SumDoubleAgg myagg = (SumDoubleAgg) agg;
-      if (myagg.empty) {
+      if (myagg.A == null) {
         return null;
       }
       

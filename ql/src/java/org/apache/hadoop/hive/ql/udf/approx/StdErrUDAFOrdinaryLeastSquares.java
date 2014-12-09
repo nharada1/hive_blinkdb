@@ -209,13 +209,8 @@ public class StdErrUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
             foi);
 
       } else {
-
         result = new Text();
         return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
-
-    //    result = new ArrayList(); 
-//        return ObjectInspectorFactory.getStandardListObjectInspector(
-  //                  PrimitiveObjectInspectorFactory.writableDoubleObjectInspector);
       }
 
     }
@@ -411,7 +406,7 @@ public class StdErrUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
       double degrees_of_freedom = (double)(rows-cols);
       double norm_factor = 1/degrees_of_freedom;
       // confidence interval
-      // THIS NEEDS TO BE STUDENT T FOR LOW DEGREES OF FREEDOM FIX THIS YOU FUCKING IDIOT
+      // Use student-t to account for cases with low degrees of freedom
       TDistribution distr = new TDistribution(degrees_of_freedom);
       double qN = distr.inverseCumulativeProbability(0.995); //Two sided 99%
       // calculate the interval for each beta
@@ -420,20 +415,10 @@ public class StdErrUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
         interval[j] = qN * Math.sqrt(norm_factor * Ainv.get(j,j) * myagg.residual);
       }
 
-      /*double bhat[] = solved.toArray();
-      // Convert the array list to the DoubleWritable type
-      ArrayList<DoubleWritable> result = new ArrayList<DoubleWritable>();
-      for (double d : bhat)
-        result.add(new DoubleWritable(d)); */
-
       sb.append("Count: ");
       sb.append(myagg.count);
-      sb.append("\nA: ");
-      sb.append(myagg.A.toString());
-      sb.append("residual: ");
+      sb.append("\nResidual: ");
       sb.append(myagg.residual);
-      sb.append("\nNorm Factor: ");
-      sb.append(norm_factor);
 
       sb.append("\n\nError Bounds:\n\n");
       for (int j=0; j<myagg.betaHat.size(); j++) {
@@ -442,7 +427,7 @@ public class StdErrUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResolver 
         sb.append(interval[j]);
         sb.append("\n");
       }
-      sb.append("\n\nwith 99% Confidence");
+      sb.append("\nwith 99% Confidence");
       result.set(sb.toString());
       return result;
 

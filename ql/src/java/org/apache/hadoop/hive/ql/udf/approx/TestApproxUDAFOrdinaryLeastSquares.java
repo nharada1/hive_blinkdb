@@ -310,10 +310,9 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           }
           ((SumDoubleAgg) agg).Ainv = Ainv;
 
-          // //Obtain Shat Nate: please add code to include Shat here.
-          // Double sDW = new sOI.get(parameters[2]);
-          // Double s = 0.0;
-          // Object 
+          //Obtain Shat Nate: please add code to include Shat here.
+          ((SumDoubleAgg) agg).s = PrimitiveObjectInspectorUtils.getDouble(parameters[2],
+              sOI);
       }
 
       boolean nulls = false;
@@ -385,9 +384,9 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           Matrix this_XT = this_X.transpose();
           Matrix cipart = this_XT.multiply(res_Ainv);
           Matrix ci_mat = cipart.multiply(this_X);
-          LOG.warn(ci_mat);
           Double ci = (Double) ci_mat.get(0,0);
 
+          LOG.warn(ci);
           //insert ci into myagg
           myagg.ci.put(vA[0], ci);
 
@@ -516,7 +515,6 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
         Double value = entry.getValue();
         sb.append(key);
         sb.append(" +/- ");
-        LOG.warn(myagg.s);
         sb.append(qN*Math.sqrt(myagg.ci.get(key)*myagg.s));
         sb.append("\n");
       }
