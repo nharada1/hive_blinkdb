@@ -382,6 +382,7 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
           }
           Matrix this_X = new Basic2DMatrix(for_X);
           Matrix this_XT = this_X.transpose();
+          LOG.warn(this_X);
           Matrix cipart = this_XT.multiply(res_Ainv);
           Matrix ci_mat = cipart.multiply(this_X);
           Double ci = (Double) ci_mat.get(0,0);
@@ -513,7 +514,7 @@ public class TestApproxUDAFOrdinaryLeastSquares extends AbstractGenericUDAFResol
       for (Map.Entry<Double, Double> entry : myagg.pred.entrySet()) {
         Double key = entry.getKey();
         Double value = entry.getValue();
-        sb.append(key);
+        sb.append(value);
         sb.append(" +/- ");
         sb.append(qN*Math.sqrt(myagg.ci.get(key)*myagg.s));
         sb.append("\n");
